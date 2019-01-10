@@ -10,7 +10,7 @@ flags.DEFINE_float('ilr', 0.01, 'initial_learning_rate')
 flags.DEFINE_integer('decay_steps', 1000, 'steps to halve the learning rate')
 flags.DEFINE_integer('epochs', 10, 'Number of epochs to train.')
 
-from Code.Dataloaders import Conditional_GAN_Dataloader
+from Code.Dataloaders import Classification_Dataloader
 
 
 class CNN(BaseModel):
@@ -48,7 +48,7 @@ class CNN(BaseModel):
         np.random.seed(42)
         with tf.variable_scope(self.NAME):
             with tf.name_scope("Dataset"):
-                self.dataloader = Conditional_GAN_Dataloader(flatten=False)
+                self.dataloader = Classification_Dataloader(flatten=False)
                 self.X_train, self.Y_train = self.dataloader.train_batch
                 self.X_validation, self.Y_validation = self.dataloader.validation_batch
                 self.X_test, self.Y_test = self.dataloader.test_batch

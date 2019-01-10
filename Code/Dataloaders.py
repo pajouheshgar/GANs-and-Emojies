@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 import tensorflow as tf
 from random import shuffle
+from random import seed
 import matplotlib.pyplot as plt
 
 flags = tf.app.flags
@@ -47,7 +48,7 @@ class GAN_Dataloader():
         for image_file_name, label in self.files_name_list:
             emoji_image = Image.open(FLAGS.dataset_dir + "emoji-images/{}/{}".format(label, image_file_name)).convert(
                 "RGBA")
-            emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.ANTIALIAS)) / 255.0
+            emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.BICUBIC)) / 255.0
             yield emoji_image, self.company2id[label]
 
     def _create_dataset(self, generator):
@@ -100,7 +101,7 @@ class Conditional_GAN_Dataloader():
         for image_file_name, label in self.files_name_list:
             emoji_image = Image.open(FLAGS.dataset_dir + "emoji-images/{}/{}".format(label, image_file_name)).convert(
                 "RGBA")
-            emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.ANTIALIAS)) / 255.0
+            emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.BICUBIC)) / 255.0
             company_id = self.company2id[label]
             category_id = self.category2id[self.img_name_2_info[image_file_name]['category']]
             yield emoji_image, company_id, category_id
@@ -158,6 +159,7 @@ class Classification_Dataloader():
             labels = [directory for _ in images_in_directory]
             self.files_name_list += (list(zip(images_in_directory, labels)))
 
+        seed(42)
         shuffle(self.files_name_list)
         n = len(self.files_name_list)
         print(n)
@@ -190,7 +192,7 @@ class Classification_Dataloader():
         for image_file_name, label in files_name_list:
             emoji_image = Image.open(FLAGS.dataset_dir + "emoji-images/{}/{}".format(label, image_file_name)).convert(
                 "RGBA")
-            emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.ANTIALIAS)) / 255.0
+            emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.BICUBIC)) / 255.0
             company_id = self.company2id[label]
             if self.category_flag:
                 category_id = self.category2id[self.img_name_2_info[image_file_name]['category']]
@@ -304,8 +306,10 @@ if __name__ == "__main__":
     a, b, c = ses.run([x_train, y_train, z_train])
     i = 1
     print(b, c)
-    plt.imshow(a[i])
+    plt.imshow(a[i][:, :, :3])
     print(b[i], c[i])
+    plt.figure()
+    plt.imshow(a[i][:, :, 3], cmap='gray')
     plt.show()
 
     # dataloader = noisy_classification_dataloader(flatten=False)
