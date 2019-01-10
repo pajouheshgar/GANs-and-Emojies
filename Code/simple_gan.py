@@ -18,21 +18,22 @@ gan_type = "MIXGAN"
 # model_name = "all_emojies"
 save_every = 10
 z_len = 50
-image_size = [64,64]
+image_size = [64, 64]
 
-train_config_init = {"batch_size":32,
-                     "num_steps":200,
-                     "z_sd":1,
+train_config_init = {"batch_size": 32,
+                     "num_steps": 200,
+                     "z_sd": 1,
                      "model_name": None,
                      "save_every": save_every}
 
-config = {"beta1": 0.5, "beta2": 0.99, "lambda": 0.001, "gamma": 0.75, "dis_iters":5}
-train_config = {"learning_rate":[0.001, 0.7, 5000]}
+config = {"beta1": 0.5, "beta2": 0.99, "lambda": 0.001, "gamma": 0.75, "dis_iters": 5}
+train_config = {"learning_rate": [0.001, 0.7, 5000]}
 train_config.update(train_config_init)
-test_optims, test_fd = GANBlocks.testGAN(dcgen, dcdis, bedis, config, z_len=z_len, image_shape=image_size + [4], minimax=False)
+test_optims, test_fd = GANBlocks.testGAN(dcgen, dcdis, bedis, config, z_len=z_len, image_shape=image_size + [4],
+                                         minimax=False)
 
 config = tf.ConfigProto()
-config.gpu_options.allow_growth=True
+config.gpu_options.allow_growth = True
 sess = tf.Session(config=config)
 sess.run(tf.global_variables_initializer())
 
@@ -40,4 +41,3 @@ directories_to_include = ['apple', 'facebook', 'google', 'twitter', 'messenger']
 data_loader = GAN_Dataloader(directories_to_include)
 print("TRAINING MODEL")
 GANBlocks.train_gan_dataloader(sess, test_optims, test_fd, data_loader, train_config)
-
