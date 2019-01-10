@@ -9,10 +9,8 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('dataset_dir', "../Dataset/", 'Directory of dataset')
-flags.DEFINE_integer('batch_size', 100, 'Number of instances in each batch')
-flags.DEFINE_integer('max_deg', 15, 'Maximum angle of rotation in degree')
+flags.DEFINE_integer('batch_size', 32, 'Number of instances in each batch')
 flags.DEFINE_integer('shuffle_buffer_size', 4096, 'Shuffle buffer size for dataloader')
-flags.DEFINE_integer('num_classes', 10, 'Number of classes in dataset')
 flags.DEFINE_integer('image_height', 64, 'Height of images')
 flags.DEFINE_integer('image_width', 64, 'Width of images')
 
@@ -58,7 +56,7 @@ class GAN_Dataloader():
                                                  output_shapes=output_shapes
                                                  )
 
-        # dataset = dataset.shuffle(buffer_size=FLAGS.shuffle_buffer_size, seed=42).repeat(1).batch(
+        dataset = dataset.shuffle(buffer_size=FLAGS.shuffle_buffer_size, seed=42)
         dataset = dataset.batch(FLAGS.batch_size)
         return dataset
 
@@ -114,7 +112,7 @@ class Conditional_GAN_Dataloader():
                                                  output_shapes=output_shapes
                                                  )
 
-        # dataset = dataset.shuffle(buffer_size=FLAGS.shuffle_buffer_size, seed=42).repeat(1).batch(
+        dataset = dataset.shuffle(buffer_size=FLAGS.shuffle_buffer_size, seed=42)
         dataset = dataset.batch(FLAGS.batch_size)
         return dataset
 
@@ -155,15 +153,17 @@ class Conditional_GAN_Dataloader():
 #     # plt.show()
 
 if __name__ == "__main__":
-    dataloader = Conditional_GAN_Dataloader(companies_to_include=['apple'], categories_to_include=['Smileys & People'])
+    dataloader = Conditional_GAN_Dataloader(companies_to_include=['apple', 'google'], categories_to_include=['Smileys & People', 'Symbols'])
     x_train, y_train, z_train = dataloader.train_batch
     ses = tf.InteractiveSession()
     ses.run(dataloader.train_initializer)
+    ses.run(dataloader.train_initializer)
 
-    a = ses.run(x_train)
-    print(a.shape)
-    # plt.imshow(np.array(a[0], dtype=np.uint8))
-    plt.imshow(a[0])
+    a, b, c = ses.run([x_train, y_train, z_train])
+    i = 1
+    print(b, c)
+    plt.imshow(a[i])
+    print(b[i], c[i])
     plt.show()
 
     # dataloader = noisy_classification_dataloader(flatten=False)
