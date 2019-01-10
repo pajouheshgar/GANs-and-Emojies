@@ -11,8 +11,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('dataset_dir', "../Dataset/", 'Directory of dataset')
 flags.DEFINE_integer('batch_size', 32, 'Number of instances in each batch')
 flags.DEFINE_integer('shuffle_buffer_size', 4096, 'Shuffle buffer size for dataloader')
-flags.DEFINE_integer('image_height', 64, 'Height of images')
-flags.DEFINE_integer('image_width', 64, 'Width of images')
+flags.DEFINE_integer('image_height', 32, 'Height of images')
+flags.DEFINE_integer('image_width', 32, 'Width of images')
 
 
 class GAN_Dataloader():
@@ -153,12 +153,14 @@ class Conditional_GAN_Dataloader():
 #     # plt.show()
 
 if __name__ == "__main__":
-    dataloader = Conditional_GAN_Dataloader(companies_to_include=['apple', 'google'], categories_to_include=['Smileys & People', 'Symbols'])
+    dataloader = Conditional_GAN_Dataloader(companies_to_include=['apple', 'google'],
+                                            categories_to_include=['Smileys & People', 'Symbols'])
     x_train, y_train, z_train = dataloader.train_batch
     ses = tf.InteractiveSession()
     ses.run(dataloader.train_initializer)
     ses.run(dataloader.train_initializer)
 
+    a, b, c = ses.run([x_train, y_train, z_train])
     a, b, c = ses.run([x_train, y_train, z_train])
     i = 1
     print(b, c)
