@@ -19,7 +19,7 @@ flags.DEFINE_integer('image_height', 64, 'Height of images')
 flags.DEFINE_integer('image_width', 64, 'Width of images')
 
 
-class classification_dataloader():
+class GAN_dataloader():
     DIRECTORIES_TO_INCLUDE = ['apple', 'facebook', 'google', 'twitter', 'messenger']
 
     def __init__(self, directories_to_include=DIRECTORIES_TO_INCLUDE):
@@ -56,7 +56,7 @@ class classification_dataloader():
 
 
 if __name__ == "__main__":
-    dataloader = classification_dataloader(directories_to_include=['apple'])
+    dataloader = GAN_dataloader(directories_to_include=['apple'])
     x_train, y_train = dataloader.train_batch
     ses = tf.InteractiveSession()
     ses.run(dataloader.train_initializer)
