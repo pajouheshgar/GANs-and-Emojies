@@ -14,10 +14,10 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('dataset_dir', "../Dataset/", 'Directory of dataset')
 flags.DEFINE_integer('batch_size', 32, 'Number of instances in each batch')
 flags.DEFINE_integer('shuffle_buffer_size', 512, 'Shuffle buffer size for dataloader')
-flags.DEFINE_integer('image_height', 128, 'Height of images')
-flags.DEFINE_integer('image_width', 128, 'Width of images')
+flags.DEFINE_integer('image_height', 64, 'Height of images')
+flags.DEFINE_integer('image_width', 64, 'Width of images')
 # flags.DEFINE_integer('image_channels', 4, 'Width of images')
-flags.DEFINE_integer('image_channels', 1, 'Width of images')
+flags.DEFINE_integer('image_channels', 3, 'Width of images')
 
 
 class GAN_Dataloader():

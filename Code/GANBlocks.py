@@ -541,6 +541,7 @@ def train_gan_dataloader(sess, optimizers, feed_dict, dataloader, config):
 
         if step % config["save_every"] == 0:
             z_for_eval_ = np.random.normal(0, config["z_sd"], [100, feed_dict["z_ph"].shape[1]])
+            z_for_eval_[:50] = z_for_eval[:50]
             fake_images = sess.run(feed_dict["fake_images"], feed_dict={feed_dict["z_eval"]: z_for_eval_})
 
             images_gallery = gallery(array=fake_images, ncols=10)
