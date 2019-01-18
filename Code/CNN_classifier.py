@@ -8,14 +8,14 @@ flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('ilr', 0.01, 'initial_learning_rate')
 flags.DEFINE_integer('decay_steps', 1000, 'steps to halve the learning rate')
-flags.DEFINE_integer('epochs', 10, 'Number of epochs to train.')
+flags.DEFINE_integer('epochs', 50, 'Number of epochs to train.')
 
 from Code.Dataloaders import Classification_Dataloader
 
 
-class CNN(BaseModel):
-    NAME = "CNN"
-    SAVE_DIR = "../../Dataset/Models/"
+class CNN_Classifier(BaseModel):
+    NAME = "CNN_Classifier"
+    SAVE_DIR = "../Dataset/Models/"
     FILTERS_LIST = [16, 32, 64]
     STRIDES_LIST = [[2, 2], [2, 2], [2, 2]]
     KERNEL_SIZE_LIST = [[5, 5], [5, 5], [5, 5]]
@@ -24,7 +24,7 @@ class CNN(BaseModel):
 
     def __init__(self, name=NAME, save_dir=SAVE_DIR, summary=True, filters_list=FILTERS_LIST,
                  strides_list=STRIDES_LIST, kernel_size_list=KERNEL_SIZE_LIST, padding_list=PADDING_LIST):
-        super(CNN, self).__init__(name, save_dir)
+        super(CNN_Classifier, self).__init__(name, save_dir)
         self.MODEL_PATH = os.path.join(self.SAVE_DIR, self.NAME)
         try:
             os.mkdir(self.MODEL_PATH)
@@ -44,23 +44,39 @@ class CNN(BaseModel):
         self.ses = tf.InteractiveSession()
 
     def build_graph(self, summary):
+        tf.reset_default_graph()
         tf.set_random_seed(42)
         np.random.seed(42)
         with tf.variable_scope(self.NAME):
+            self.categories_to_include = [
+                'Food & Drink',
+                # 'Smileys & People',
+                # 'Symbols',
+                # 'Travel & Places',
+                # 'Skin Tones',
+                # 'Activities',
+                # 'Objects',
+                # 'Animals & Nature',
+                # 'Flags',
+            ]
             with tf.name_scope("Dataset"):
-                self.dataloader = Classification_Dataloader(flatten=False)
-                self.X_train, self.Y_train = self.dataloader.train_batch
-                self.X_validation, self.Y_validation = self.dataloader.validation_batch
-                self.X_test, self.Y_test = self.dataloader.test_batch
+                self.dataloader = Classification_Dataloader(categories_to_include=self.categories_to_include)
+                self.X_train, self.Y_train_company, self.Y_train_category = self.dataloader.train_batch
+                self.X_validation, self.Y_validation_company, self.Y_validation_category = self.dataloader.validation_batch
+                self.X_test, self.Y_test_company, self.Y_test_category = self.dataloader.test_batch
 
             with tf.name_scope("Placeholders"):
                 self.X_placeholder = tf.placeholder_with_default(self.X_train,
                                                                  shape=[None, FLAGS.image_height, FLAGS.image_width,
-                                                                        1],
+                                                                        FLAGS.image_channels],
                                                                  name="X_placeholder")
-                self.Y_placeholder = tf.placeholder_with_default(self.Y_train,
-                                                                 shape=[None, FLAGS.num_classes],
-                                                                 name="Y_placeholder")
+                self.Y_category_placeholder = tf.placeholder_with_default(self.Y_train_category,
+                                                                          shape=[None],
+                                                                          name="Y_placeholder")
+                self.Y_company_placeholder = tf.placeholder_with_default(self.Y_train_company,
+                                                                         shape=[None],
+                                                                         name="Y_placeholder")
+
                 self.is_training_placeholde = tf.placeholder_with_default(True, [], name='is_training_placeholder')
 
             with tf.variable_scope("Inference"):
@@ -84,8 +100,9 @@ class CNN(BaseModel):
                     self.conv_layers.append(last_layer)
 
                 conv_flatten = tf.layers.flatten(last_layer, name='conv_flatten')
-                # hidden_layer1 = tf.layers.dense(conv_flatten, units=5 * FLAGS.num_classes, activation=tf.nn.relu,
-                #                                 name='hidden_layer1')
+                hidden_layer1 = tf.layers.dense(conv_flatten, units=5 * self.dataloader.n_companies,
+                                                activation=tf.nn.relu,
+                                                name='hidden_layer1')
                 # hidden_layer1_dropped_out = tf.layers.dropout(hidden_layer1, rate=0.5,
                 #                                               training=self.is_training_placeholde,
                 #                                               name='hidden_layer1_dropped_out')
@@ -97,15 +114,16 @@ class CNN(BaseModel):
                 #                                               training=self.is_training_placeholde,
                 #                                               name='hidden_layer2_dropped_out')
 
-                logits = tf.layers.dense(conv_flatten, units=FLAGS.num_classes, name='logits')
+                logits = tf.layers.dense(hidden_layer1, units=self.dataloader.n_companies, name='logits')
                 self.estimated_class_probabilities = tf.nn.softmax(logits, name='estimated_class_probabilities')
 
             with tf.name_scope("Optimization"):
                 self.loss = tf.reduce_mean(
-                    tf.nn.softmax_cross_entropy_with_logits(labels=self.Y_placeholder, logits=logits), name='loss')
+                    tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.Y_company_placeholder, logits=logits),
+                    name='loss')
 
                 correct_prediction = tf.equal(tf.argmax(self.estimated_class_probabilities, axis=1),
-                                              tf.argmax(self.Y_placeholder, axis=1))
+                                              self.Y_company_placeholder)
                 self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, dtype=tf.float32))
 
                 self.global_step = tf.train.get_or_create_global_step()
@@ -154,13 +172,13 @@ class CNN(BaseModel):
         assert type == 'train' or type == 'test' or type == 'validation'
         if type == 'train':
             initializer = self.dataloader.train_initializer
-            x, y = self.X_train, self.Y_train
+            x, y_company, y_category = self.X_train, self.Y_train_company, self.Y_train_category
         elif type == 'test':
             initializer = self.dataloader.test_initializer
-            x, y = self.X_test, self.Y_test
+            x, y_company, y_category = self.X_test, self.Y_test_company, self.Y_test_category
         else:
             initializer = self.dataloader.validation_initializer
-            x, y = self.X_validation, self.Y_validation
+            x, y_company, y_category = self.X_validation, self.Y_validation_company, self.Y_validation_category
 
         self.ses.run(initializer)
         loss = 0
@@ -168,8 +186,9 @@ class CNN(BaseModel):
         n = 0
         while True:
             try:
-                x_fetched, y_fetched = self.ses.run([x, y])
-                feed_dict = {self.X_placeholder: x_fetched, self.Y_placeholder: y_fetched}
+                x_fetched, y_company_fetched, y_category_fetched = self.ses.run([x, y_company, y_category])
+                feed_dict = {self.X_placeholder: x_fetched, self.Y_company_placeholder: y_company_fetched,
+                             self.Y_category_placeholder: y_category_fetched}
                 b = len(x_fetched)
                 n += b
                 l, acc = self.ses.run([self.loss, self.accuracy], feed_dict=feed_dict)
@@ -230,15 +249,30 @@ class CNN(BaseModel):
 
 
 if __name__ == "__main__":
-    model = CNN("CNN_Test", summary=False, filters_list=[16, 32, 64, 128, 256],
-                strides_list=[[2, 2], [2, 2], [1, 1], [1, 1], [1, 1]],
-                kernel_size_list=[[5, 5], [3, 3], [3, 3], [3, 3], [2, 2]],
-                padding_list=['v', 'v', 'v', 'v', 'v'])
-    # model = CNN("CNN_Test", summary=True, filters_list=[20, 40], strides_list=[[2, 2], [2, 2]])
-    model.get_n_params()
+    # model = CNN_Classifier("CNN_Test", summary=False, filters_list=[16, 32, 64, 128, 256],
+    #                        strides_list=[[2, 2], [2, 2], [1, 1], [1, 1], [1, 1]],
+    #                        kernel_size_list=[[5, 5], [3, 3], [3, 3], [3, 3], [2, 2]],
+    #                        padding_list=['v', 'v', 'v', 'v', 'v'])
+    model = CNN_Classifier("CNN_Test", summary=True, filters_list=[16, 32, 64, 128, 256],
+                           strides_list=[[2, 2], [2, 2], [1, 1], [1, 1], [1, 1]],
+                           kernel_size_list=[[5, 5], [3, 3], [3, 3], [3, 3], [2, 2]],
+                           padding_list=['v', 'v', 'v', 'v', 'v'])
+    model.init_variables()
+    model.train()
+    model.ses.close()
+
+    # model = CNN_Classifier("CNN_Test2", summary=False, filters_list=[16, 32, 64, 128, 256],
+    #                        strides_list=[[2, 2], [2, 2], [1, 1], [1, 1], [1, 1]],
+    #                        kernel_size_list=[[5, 5], [3, 3], [3, 3], [3, 3], [2, 2]],
+    #                        padding_list=['v', 'v', 'v', 'v', 'v'])
+    # model.init_variables()
+    # model.ses.close()
+    # model.get_n_params()
     # model.train()
     # model.save()
 
-    model.load()
-    test_loss, test_accuracy = model.get_loss_accuracy('test')
-    print("Epoch = {}\n\tTest Loss = {}\n\tTest Accuracy = {}".format(1, test_loss, test_accuracy))
+    # model.load()
+    # test_loss, test_accuracy = model.get_loss_accuracy('validation')
+    # print(
+    #     "Category = {}\n\tTest Loss = {}\n\tValidation Accuracy = {}".format(model.categories_to_include[0], test_loss,
+    #                                                                          test_accuracy))

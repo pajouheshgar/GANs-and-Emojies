@@ -484,7 +484,7 @@ def train_gan_dataloader(sess, optimizers, feed_dict, dataloader, config):
     import matplotlib.pyplot as plt
 
     sess.run(dataloader.train_initializer)
-    x_train, y_train = dataloader.train_batch
+    x_train, y_train, _ = dataloader.train_batch
 
     model_name = config["model_name"]
 
@@ -540,9 +540,12 @@ def train_gan_dataloader(sess, optimizers, feed_dict, dataloader, config):
             config["learning_rate"] *= lr_decay
 
         if step % config["save_every"] == 0:
-            fake_images = sess.run(feed_dict["fake_images"], feed_dict={feed_dict["z_eval"]: z_for_eval})
+            z_for_eval_ = np.random.normal(0, config["z_sd"], [100, feed_dict["z_ph"].shape[1]])
+            fake_images = sess.run(feed_dict["fake_images"], feed_dict={feed_dict["z_eval"]: z_for_eval_})
 
             images_gallery = gallery(array=fake_images, ncols=10)
+            if images_gallery.shape[-1] == 1:
+                images_gallery = images_gallery[:, :, 0]
             if model_name is not None:
                 saver.save(sess, os.path.join(model_name, "GANModel"), global_step=step)
                 plt.imsave(os.path.join(model_name, "outputs", "RESULT" + str(step) + ".png"), images_gallery)
