@@ -138,7 +138,8 @@ class Conditional_GAN_Dataloader():
                                                  )
 
         dataset = dataset.shuffle(buffer_size=FLAGS.shuffle_buffer_size, seed=42)
-        dataset = dataset.batch(FLAGS.batch_size)
+        # dataset = dataset.batch(FLAGS.batch_size)
+        dataset = dataset.apply(tf.contrib.data.batch_and_drop_remainder(FLAGS.batch_size))
         return dataset
 
 

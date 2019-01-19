@@ -276,6 +276,65 @@ def testGAN(generator, discriminator, began_discriminator, config, z_len=100, im
     return optimizers, feed_dict
 
 
+def WGAN(generator, discriminator, config, z_len=100, image_shape=[64, 64, 3], mode='regular'):
+    z_ph = tf.placeholder(tf.float32, shape=[None, z_len], name="z_placeholder")
+    z_eval = tf.placeholder(tf.float32, shape=[None, z_len], name="z_placeholder_eval")
+    real_images = tf.placeholder(tf.float32, shape=[None, image_shape[0], image_shape[1], image_shape[2]],
+                                 name="real_images")
+    learning_rate = tf.placeholder(tf.float32, name="learning_rate")
+
+    generated_images, gen_info = generator(z_ph, output_shape=image_shape, name="GENERATOR", reuse=False,
+                                           is_training=True)
+    tf.identity(generated_images, "generated_images")
+    generated_images_eval, gen_info_eval = generator(z_eval, output_shape=image_shape, name="GENERATOR", reuse=True,
+                                                     is_training=False)
+    tf.identity(generated_images_eval, "generated_images_eval")
+    real_out, real_logits, dis_info = discriminator(real_images, batch_normalization=False, name="DISCRIMINATOR", reuse=False, is_training=True)
+    tf.identity(real_out, "real_out")
+    fake_out, fake_logits, _ = discriminator(generated_images, batch_normalization=False, name="DISCRIMINATOR", reuse=True, is_training=True)
+    tf.identity(real_out, "fake_out")
+
+    gen_loss_init = 0
+
+    # real_dis_loss = tf.reduce_mean(
+    #     tf.nn.sigmoid_cross_entropy_with_logits(logits=real_logits, labels=tf.ones_like(real_logits)))
+    # fake_dis_loss = tf.reduce_mean(
+    #     tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_logits, labels=tf.zeros_like(fake_logits)))
+    # dis_loss = tf.add(real_dis_loss, fake_dis_loss, name="dis_loss")
+    dis_loss = tf.reduce_mean(tf.subtract(fake_logits, real_logits), name='dis_loss')
+    gen_loss = tf.reduce_mean(-fake_logits, name='gen_loss')
+
+    # gen_loss = tf.add(gen_loss_init, tf.reduce_mean(
+    #     tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_logits, labels=tf.ones_like(fake_logits))),
+    #                   name="gen_loss")
+
+    dis_vars = dis_info["variables"]
+    gen_vars = gen_info["variables"]
+
+    gen_optim = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=config["beta1"],
+                                       beta2=config["beta2"]).minimize(gen_loss, var_list=gen_vars, name="gen_optim")
+    dis_optim = tf.train.AdamOptimizer(learning_rate=learning_rate, beta1=config["beta1"],
+                                       beta2=config["beta2"]).minimize(dis_loss, var_list=dis_vars, name="dis_optim")
+
+    if mode is 'regular':
+        clipped_var_c = [tf.assign(var, tf.clip_by_value(var, config['clamp_lower'], config['clamp_upper'])) for var in
+                         dis_vars]
+        with tf.control_dependencies([dis_optim]):
+            dis_optim = tf.tuple(clipped_var_c)
+
+    feed_dict = {"z_ph": z_ph,
+                 "real_images": real_images,
+                 "z_eval": z_eval,
+                 "fake_images": generated_images_eval,
+                 "learning_rate": learning_rate,
+                 "gen_loss": gen_loss,
+                 "dis_loss": dis_loss}
+
+    optimizers = [gen_optim] + [dis_optim for _ in range(config["dis_iters"])]
+
+    return optimizers, feed_dict
+
+
 def BEGAN(generator, began_discriminator, config, z_len=100, image_shape=[64, 64, 3]):
     z_ph = tf.placeholder(tf.float32, shape=[None, z_len], name="z_placeholder")
     z_eval = tf.placeholder(tf.float32, shape=[None, z_len], name="z_placeholder_eval")
@@ -535,6 +594,79 @@ def train_gan_dataloader(sess, optimizers, feed_dict, dataloader, config):
               "Discriminator_loss: " + str(step_dis_loss), "   ",
               "Real ACC: " + str(step_real_accs), "   ",
               "Fake ACC: " + str(step_fake_accs), "   ")
+
+        if step % decay_step == 0 and step > 0:
+            config["learning_rate"] *= lr_decay
+
+        if step % config["save_every"] == 0:
+            z_for_eval_ = np.random.normal(0, config["z_sd"], [100, feed_dict["z_ph"].shape[1]])
+            z_for_eval_[:50] = z_for_eval[:50]
+            fake_images = sess.run(feed_dict["fake_images"], feed_dict={feed_dict["z_eval"]: z_for_eval_})
+
+            images_gallery = gallery(array=fake_images, ncols=10)
+            if images_gallery.shape[-1] == 1:
+                images_gallery = images_gallery[:, :, 0]
+            if model_name is not None:
+                saver.save(sess, os.path.join(model_name, "GANModel"), global_step=step)
+                plt.imsave(os.path.join(model_name, "outputs", "RESULT" + str(step) + ".png"), images_gallery)
+            else:
+                plt.imsave("temp/RESULT" + str(step) + ".png", images_gallery)
+        # if step % 100 == 0:
+        #     config["learning_rate"] /= 2
+
+
+def train_wgan_dataloader(sess, optimizers, feed_dict, dataloader, config):
+    import matplotlib.pyplot as plt
+    make_config(config)
+
+    import matplotlib
+    import matplotlib.pyplot as plt
+
+    sess.run(dataloader.train_initializer)
+    x_train, y_train, _ = dataloader.train_batch
+
+    model_name = config["model_name"]
+
+    if model_name is not None:
+        saver = tf.train.Saver()
+        if os.path.exists(model_name):
+            raise Exception("Model name already exists")
+        os.mkdir(model_name)
+        os.mkdir(os.path.join(model_name, "outputs"))
+
+    z_for_eval = np.random.normal(0, config["z_sd"], [100, feed_dict["z_ph"].shape[1]])
+
+    lr_decay = 1
+    decay_step = 1000
+    if config["learning_rate"].__class__ == list and len(config["learning_rate"]) == 3:
+        lr_decay = config["learning_rate"][1]
+        decay_step = config["learning_rate"][2]
+        config["learning_rate"] = config["learning_rate"][0]
+
+    for step in range(config["num_steps"]):
+        try:
+            step_images = sess.run(x_train)
+        except Exception as e:
+            sess.run(dataloader.train_initializer)
+
+        step_z = np.random.normal(0, config["z_sd"], [config["batch_size"], feed_dict["z_ph"].shape[1]])
+        step_fd = {feed_dict["z_ph"]: step_z,
+                   feed_dict["real_images"]: step_images,
+                   feed_dict["learning_rate"]: config["learning_rate"]}
+        if config["DRAGAN"]:
+            real_perturbed = step_images + 0.5 * step_images.std() * np.random.random(step_images.shape)
+            step_fd[feed_dict["real_images_perturbed"]] = real_perturbed
+
+        step_gen_loss, step_dis_loss = sess.run([feed_dict["gen_loss"],
+                                                        feed_dict["dis_loss"]],
+                                                       feed_dict=step_fd)
+
+        sess.run(optimizers, feed_dict=step_fd)
+
+        print("STEP: " + str(step), "   ",
+              "Learning_rate: " + str(config["learning_rate"]), "   ",
+              "Generator_loss: " + str(step_gen_loss), "   ",
+              "Discriminator_loss: " + str(step_dis_loss), "   ")
 
         if step % decay_step == 0 and step > 0:
             config["learning_rate"] *= lr_decay
