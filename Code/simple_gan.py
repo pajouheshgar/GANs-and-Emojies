@@ -21,23 +21,24 @@ z_len = 250
 image_size = [FLAGS.image_width, FLAGS.image_width]
 
 train_config_init = {"batch_size": FLAGS.batch_size,
-                     "num_steps": 20000,
+                     "num_steps": 30000,
                      "z_sd": 1,
                      "model_name": None,
                      "save_every": save_every}
 
-config = {"beta1": 0.5, "beta2": 0.99, "lambda": 0.001, "gamma": 0.75, "dis_iters": 5,
-          'clamp_lower': -0.01, 'clamp_upper': 0.01
+config = {"batch_size": FLAGS.batch_size,
+          "beta1": 0.5, "beta2": 0.99, "lambda": 0.001, "gamma": 0.75, "dis_iters": 5,
+          'clamp_lower': -0.01, 'clamp_upper': 0.01, 'lambda_gp': 6
           }
-train_config = {"learning_rate": [0.001, 0.9, 300]}
+train_config = {"learning_rate": [0.001, 0.9, 1000]}
 train_config.update(train_config_init)
 # test_optims, test_fd = GANBlocks.testGAN(dcgen, dcdis, bedis, config, z_len=z_len,
 #                                          image_shape=image_size + [FLAGS.image_channels],
 #                                          minimax=False)
 
 test_optims, test_fd = GANBlocks.WGAN(dcgen, dcdis, config, z_len=z_len,
-                                         image_shape=image_size + [FLAGS.image_channels],
-                                         mode='regular')
+                                      image_shape=image_size + [FLAGS.image_channels],
+                                      mode='gp')
 
 config = tf.ConfigProto()
 config.gpu_options.allow_growth = True

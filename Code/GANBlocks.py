@@ -277,6 +277,7 @@ def testGAN(generator, discriminator, began_discriminator, config, z_len=100, im
 
 
 def WGAN(generator, discriminator, config, z_len=100, image_shape=[64, 64, 3], mode='regular'):
+    assert mode in ['gp', 'regular']
     z_ph = tf.placeholder(tf.float32, shape=[None, z_len], name="z_placeholder")
     z_eval = tf.placeholder(tf.float32, shape=[None, z_len], name="z_placeholder_eval")
     real_images = tf.placeholder(tf.float32, shape=[None, image_shape[0], image_shape[1], image_shape[2]],
@@ -289,24 +290,27 @@ def WGAN(generator, discriminator, config, z_len=100, image_shape=[64, 64, 3], m
     generated_images_eval, gen_info_eval = generator(z_eval, output_shape=image_shape, name="GENERATOR", reuse=True,
                                                      is_training=False)
     tf.identity(generated_images_eval, "generated_images_eval")
-    real_out, real_logits, dis_info = discriminator(real_images, batch_normalization=False, name="DISCRIMINATOR", reuse=False, is_training=True)
+    real_out, real_logits, dis_info = discriminator(real_images, batch_normalization=False, name="DISCRIMINATOR",
+                                                    reuse=False, is_training=True)
     tf.identity(real_out, "real_out")
-    fake_out, fake_logits, _ = discriminator(generated_images, batch_normalization=False, name="DISCRIMINATOR", reuse=True, is_training=True)
+    fake_out, fake_logits, _ = discriminator(generated_images, batch_normalization=False, name="DISCRIMINATOR",
+                                             reuse=True, is_training=True)
     tf.identity(real_out, "fake_out")
 
-    gen_loss_init = 0
-
-    # real_dis_loss = tf.reduce_mean(
-    #     tf.nn.sigmoid_cross_entropy_with_logits(logits=real_logits, labels=tf.ones_like(real_logits)))
-    # fake_dis_loss = tf.reduce_mean(
-    #     tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_logits, labels=tf.zeros_like(fake_logits)))
-    # dis_loss = tf.add(real_dis_loss, fake_dis_loss, name="dis_loss")
     dis_loss = tf.reduce_mean(tf.subtract(fake_logits, real_logits), name='dis_loss')
     gen_loss = tf.reduce_mean(-fake_logits, name='gen_loss')
+    if mode == 'gp':
+        alpha_dist = tf.contrib.distributions.Uniform(low=0., high=1.)
+        alpha = alpha_dist.sample((config['batch_size'], 1, 1, 1))
+        interpolated = real_images + alpha * (generated_images - real_images)
+        interpolated_out, interpolated_logits, _ = discriminator(interpolated, batch_normalization=False,
+                                                                 name="DISCRIMINATOR",
+                                                                 reuse=True, is_training=True)
 
-    # gen_loss = tf.add(gen_loss_init, tf.reduce_mean(
-    #     tf.nn.sigmoid_cross_entropy_with_logits(logits=fake_logits, labels=tf.ones_like(fake_logits))),
-    #                   name="gen_loss")
+        gradients = tf.gradients(interpolated_logits, [interpolated, ])[0]
+        grad_l2 = tf.sqrt(tf.reduce_sum(tf.square(gradients), axis=[1, 2, 3]))
+        gradient_penalty = tf.reduce_mean((grad_l2 - 1) ** 2)
+        dis_loss += config['lambda_gp'] * gradient_penalty
 
     dis_vars = dis_info["variables"]
     gen_vars = gen_info["variables"]
@@ -658,8 +662,8 @@ def train_wgan_dataloader(sess, optimizers, feed_dict, dataloader, config):
             step_fd[feed_dict["real_images_perturbed"]] = real_perturbed
 
         step_gen_loss, step_dis_loss = sess.run([feed_dict["gen_loss"],
-                                                        feed_dict["dis_loss"]],
-                                                       feed_dict=step_fd)
+                                                 feed_dict["dis_loss"]],
+                                                feed_dict=step_fd)
 
         sess.run(optimizers, feed_dict=step_fd)
 
