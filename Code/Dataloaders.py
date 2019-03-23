@@ -477,7 +477,10 @@ class Parallel_Conditional_GAN_Dataloader():
                                      num_parallel_calls=FLAGS.n_cpu)
         dataset = dataset.prefetch(buffer_size=FLAGS.prefetch_buffer_size)
 
-        dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True)
+        try:
+            dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True)
+        except:
+            dataset = dataset.apply(tf.contrib.data.batch_and_drop_remainder(FLAGS.batch_size))
         return dataset
 
 
