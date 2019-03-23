@@ -49,9 +49,9 @@ def batch_norm(input_, is_training, scope):
         input_,
         decay=0.999,
         epsilon=0.001,
-        updates_collections=None,
+        # updates_collections=None,
         scale=True,
-        fused=False,
+        # fused=False,
         is_training=is_training,
         scope=scope)
 

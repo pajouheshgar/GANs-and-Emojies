@@ -3,22 +3,29 @@ import datetime
 import numpy as np
 import tensorflow as tf
 from Code.ops import *
-from Code.Models.BaseModel import BaseModel
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
-flags.DEFINE_float('ilr', 0.01, 'initial_learning_rate')
-flags.DEFINE_integer('decay_steps', 1000, 'steps to halve the learning rate')
-flags.DEFINE_integer('epochs', 50, 'Number of epochs to train.')
+flags.DEFINE_float('ilr', 0.001, 'initial_learning_rate')
+flags.DEFINE_integer('decay_steps', 10000, 'steps to halve the learning rate')
+flags.DEFINE_integer('epochs', 5000, 'Number of epochs to train.')
+
 flags.DEFINE_float('z_std', 1.0, 'Standard deviation of Z')
+flags.DEFINE_float('beta1', 0.5, 'beta1 of Adam optimizer')
+flags.DEFINE_float('beta2', 0.99, 'beta2 of Adam optimizer')
+
 flags.DEFINE_integer('z_dim', 256, 'Dimension of z')
+flags.DEFINE_integer('n_params', 64, 'Number of parameters for Conv and Deconv layers')
 flags.DEFINE_integer('dis_steps', 1, 'Number of steps to train discriminator')
+flags.DEFINE_bool('use_batch_norm', False, 'Whether to use Batch Normalization or not')
+flags.DEFINE_integer('kernel_size', 5, 'Kernel size for Convolution and  Deconvolution layers')
+
 flags.DEFINE_integer('image_summary_max', 5, 'Maximum images to show in tensorboard')
 
 from Code.Dataloaders import Conditional_GAN_Dataloader, Parallel_Conditional_GAN_Dataloader
 
 
-class GAN(BaseModel):
+class GAN():
     NAME = "GAN"
     SAVE_DIR = "../Dataset/Models/"
     FILTERS_LIST = [16, 32, 64]
@@ -28,7 +35,8 @@ class GAN(BaseModel):
     DESCRIPTION = ""
 
     def __init__(self, dataloader, name=NAME, save_dir=SAVE_DIR, summary=True, ):
-        super(GAN, self).__init__(name, save_dir)
+        self.NAME = name
+        self.SAVE_DIR = save_dir
         self.MODEL_PATH = os.path.join(self.SAVE_DIR, self.NAME)
         try:
             os.mkdir(self.MODEL_PATH)
@@ -41,63 +49,158 @@ class GAN(BaseModel):
         self.build_graph(summary)
         self.ses = tf.InteractiveSession()
 
-    def DCGAN_generator(self, z, name="DCGAN_generator", reuse=False, is_training=False, gf_dim=64):
+    def DCGAN_generator(self, z_img, word_vector=None, name="generator", use_batch_norm=True, reuse=False,
+                        is_training=False, nparams=64,
+                        kernel_size=[5, 5]):
+        activation = tf.nn.relu
         output_shape = [FLAGS.image_width, FLAGS.image_height, FLAGS.image_channels]
+        n_channels = output_shape[-1]
+        s_h, s_w = output_shape[0], output_shape[1]
+        s_h2, s_w2 = (s_h + 1) // 2, (s_w + 1) // 2
+        s_h4, s_w4 = (s_h2 + 1) // 2, (s_w2 + 1) // 2
+        s_h8, s_w8 = (s_h4 + 1) // 2, (s_w4 + 1) // 2
+        s_h16, s_w16 = (s_h8 + 1) // 2, (s_w8 + 1) // 2
+
         with tf.variable_scope(name, reuse=reuse):
-            s_h, s_w = output_shape[0], output_shape[1]
-            s_h2, s_w2 = int(np.ceil(float(s_h) / float(2))), int(np.ceil(float(s_w) / float(2)))
-            s_h4, s_w4 = int(np.ceil(float(s_h2) / float(2))), int(np.ceil(float(s_w2) / float(2)))
-            s_h8, s_w8 = int(np.ceil(float(s_h4) / float(2))), int(np.ceil(float(s_w4) / float(2)))
-            s_h16, s_w16 = int(np.ceil(float(s_h8) / float(2))), int(np.ceil(float(s_w8) / float(2)))
+            net = tf.layers.dense(z_img, units=nparams * 8 * s_h16 * s_w16, name="fc1")
+            net = tf.reshape(net, shape=[-1, s_h16, s_w16, nparams * 8], name='reshape')
+            deconv = tf.layers.conv2d_transpose(
+                inputs=net,
+                kernel_size=kernel_size,
+                filters=nparams * 4,
+                strides=[2, 2],
+                padding="SAME",
+                activation=activation,
+                name='dc1',
+            )
+            net = tf.layers.batch_normalization(
+                inputs=deconv,
+                training=is_training,
+                name='bn1'
+            ) if use_batch_norm else deconv
 
-            net = linear(z, gf_dim * 8 * s_h16 * s_w16, scope="g_fc1")
-            net = tf.reshape(net, [-1, s_h16, s_w16, gf_dim * 8])
-            output_c_dim = output_shape[-1]
-            net = lrelu(batch_norm(net, is_training, scope="g_bn1"), leak=0.1)
-            # net = tf.nn.relu(batch_norm(net, is_training, scope="g_bn1"))
-            net = deconv2d(net, [-1, s_h8, s_w8, gf_dim * 4], 5, 5, 2, 2, name="g_dc1")
-            net = lrelu(batch_norm(net, is_training, scope="g_bn2"), leak=0.1)
-            # net = tf.nn.relu(batch_norm(net, is_training, scope="g_bn2"))
-            net = deconv2d(net, [-1, s_h4, s_w4, gf_dim * 2], 5, 5, 2, 2, name="g_dc2")
-            net = lrelu(batch_norm(net, is_training, scope="g_bn3"), leak=0.1)
-            # net = tf.nn.relu(batch_norm(net, is_training, scope="g_bn3"))
-            net = deconv2d(net, [-1, s_h2, s_w2, gf_dim * 1], 5, 5, 2, 2, name="g_dc3")
-            net = lrelu(batch_norm(net, is_training, scope="g_bn4"), leak=0.1)
-            # net = tf.nn.relu(batch_norm(net, is_training, scope="g_bn4"))
-            net = deconv2d(net, [-1, s_h, s_w, output_c_dim], 5, 5, 2, 2, name="g_dc4")
-            net = tf.nn.sigmoid(net)
+            deconv = tf.layers.conv2d_transpose(
+                inputs=net,
+                kernel_size=kernel_size,
+                filters=nparams * 2,
+                strides=[2, 2],
+                padding="SAME",
+                activation=activation,
+                name='dc2',
+            )
+            net = tf.layers.batch_normalization(
+                inputs=deconv,
+                training=is_training,
+                name='bn2'
+            ) if use_batch_norm else deconv
 
-        return net
+            deconv = tf.layers.conv2d_transpose(
+                inputs=net,
+                kernel_size=kernel_size,
+                filters=nparams * 1,
+                strides=[2, 2],
+                padding="SAME",
+                activation=activation,
+                name='dc3',
+            )
+            net = tf.layers.batch_normalization(
+                inputs=deconv,
+                training=is_training,
+                name='bn3'
+            ) if use_batch_norm else deconv
 
-    def DCGAN_discriminator(self, x, batch_normalization=True, name="DCGAN_dicriminator", reuse=False,
+            deconv = tf.layers.conv2d_transpose(
+                inputs=net,
+                kernel_size=kernel_size,
+                filters=n_channels,
+                strides=[2, 2],
+                padding="SAME",
+                # activation=activation,
+                name='dc4',
+            )
+
+            generated_image = tf.nn.sigmoid(deconv)
+
+        return generated_image
+
+    def DCGAN_discriminator(self, img, use_batch_norm=True, name="discriminator", reuse=False,
                             is_training=False,
-                            df_dim=64):
+                            nparams=64, kernel_size=[5, 5]):
+
+        activation = tf.nn.relu
         with tf.variable_scope(name, reuse=reuse):
-            net = lrelu(conv2d(x, df_dim, 5, 5, 2, 2, name="d_conv1"))
-            net = conv2d(net, df_dim * 2, 5, 5, 2, 2, name="d_conv2")
+            conv = tf.layers.conv2d_transpose(
+                inputs=img,
+                kernel_size=kernel_size,
+                filters=nparams * 1,
+                strides=[2, 2],
+                padding="SAME",
+                activation=activation,
+                name='cn1',
+            )
+            net = tf.layers.batch_normalization(
+                inputs=conv,
+                training=is_training,
+                name='bn1'
+            ) if use_batch_norm else conv
 
-            if batch_normalization:
-                net = batch_norm(net, is_training, scope="d_bn1")
-            net = lrelu(net)
-            net = conv2d(net, df_dim * 4, 5, 5, 2, 2, name="d_conv3")
+            conv = tf.layers.conv2d_transpose(
+                inputs=net,
+                kernel_size=kernel_size,
+                filters=nparams * 2,
+                strides=[2, 2],
+                padding="SAME",
+                activation=activation,
+                name='cn2',
+            )
+            net = tf.layers.batch_normalization(
+                inputs=conv,
+                training=is_training,
+                name='bn2'
+            ) if use_batch_norm else conv
 
-            if batch_norm:
-                net = batch_norm(net, is_training, scope="d_bn2")
-            net = lrelu(net)
-            net = conv2d(net, df_dim * 8, 5, 5, 2, 2, name="d_conv4")
+            conv = tf.layers.conv2d_transpose(
+                inputs=net,
+                kernel_size=kernel_size,
+                filters=nparams * 4,
+                strides=[2, 2],
+                padding="SAME",
+                activation=activation,
+                name='cn3',
+            )
+            net = tf.layers.batch_normalization(
+                inputs=conv,
+                training=is_training,
+                name='bn3'
+            ) if use_batch_norm else conv
 
-            if batch_norm:
-                net = batch_norm(net, is_training, scope="d_bn3")
-            net = lrelu(net)
-            out_logit = linear(
-                tf.reshape(net, [-1, int(net.shape[1] * net.shape[2] * net.shape[3])]), 1, scope="d_fc4")
-            out = tf.nn.sigmoid(out_logit)
+            conv = tf.layers.conv2d_transpose(
+                inputs=net,
+                kernel_size=kernel_size,
+                filters=nparams * 8,
+                strides=[2, 2],
+                padding="SAME",
+                activation=activation,
+                name='cn4',
+            )
+            net = tf.layers.batch_normalization(
+                inputs=conv,
+                training=is_training,
+                name='bn4'
+            ) if use_batch_norm else conv
 
-        return out, out_logit
+            net = tf.layers.flatten(net, name='flatten')
+            logits = tf.layers.dense(net, units=1, name='logits')
+            probs = tf.nn.sigmoid(logits, name='probs')
+
+        return probs, logits
 
     def build_graph(self, summary):
         tf.set_random_seed(42)
         np.random.seed(42)
+        use_batch_norm = FLAGS.use_batch_norm
+        kernel_size = [FLAGS.kernel_size, FLAGS.kernel_size]
+        n_params = FLAGS.n_params
         with tf.variable_scope(self.NAME):
             with tf.name_scope("Dataset"):
                 self.X_train, self.Y_train_company, self.Y_train_category, self.X_train_wordvector = self.dataloader.train_batch
@@ -121,13 +224,21 @@ class GAN(BaseModel):
                 self.Z_placeholder = tf.placeholder_with_default(self.Z, shape=[None, FLAGS.z_dim],
                                                                  name='Z_placeholder')
 
-                self.is_training_placeholde = tf.placeholder_with_default(True, [], name='is_training_placeholder')
+                self.is_training_placeholder = tf.placeholder_with_default(True, [], name='is_training_placeholder')
 
             with tf.variable_scope("Inference"):
-                generator_seed = tf.concat([self.Z_placeholder, self.X_wordvector_placeholder], axis=1,
-                                           name='generator_seed')
-                self.generated_images = self.DCGAN_generator(generator_seed, reuse=False, name='generator',
-                                                             is_training=self.is_training_placeholde)
+                # generator_seed = tf.concat([self.Z_placeholder, self.X_wordvector_placeholder], axis=1,
+                #                            name='generator_seed')
+                generator_seed = self.Z_placeholder
+                self.generated_images = self.DCGAN_generator(
+                    z_img=generator_seed,
+                    reuse=False,
+                    use_batch_norm=use_batch_norm,
+                    kernel_size=kernel_size,
+                    nparams=n_params,
+                    is_training=self.is_training_placeholder,
+                    name='generator',
+                )
 
                 self.generated_images_placeholder = tf.placeholder_with_default(self.generated_images,
                                                                                 shape=[None, FLAGS.image_width,
@@ -135,40 +246,53 @@ class GAN(BaseModel):
                                                                                        FLAGS.image_channels],
                                                                                 name='generated_images_placeholder')
                 self.fake_dis_prob, self.fake_dis_logits = self.DCGAN_discriminator(
-                    x=self.generated_images_placeholder, batch_normalization=True,
-                    name="discriminator",
-                    reuse=False, is_training=self.is_training_placeholde)
+                    img=self.generated_images_placeholder,
+                    reuse=False,
+                    use_batch_norm=use_batch_norm,
+                    nparams=n_params,
+                    kernel_size=kernel_size,
+                    is_training=self.is_training_placeholder,
+                    name="discriminator")
 
                 self.real_dis_prob, self.real_dis_logits = self.DCGAN_discriminator(
-                    x=self.X_placeholder, batch_normalization=True,
+                    img=self.X_placeholder,
+                    reuse=True,
+                    use_batch_norm=use_batch_norm,
+                    nparams=n_params,
+                    kernel_size=kernel_size,
+                    is_training=self.is_training_placeholder,
                     name="discriminator",
-                    reuse=True, is_training=self.is_training_placeholde)
+                )
 
             with tf.name_scope("Optimization"):
-                self.global_step = tf.train.get_or_create_global_step()
-                learning_rate = tf.train.exponential_decay(FLAGS.ilr, self.global_step, FLAGS.decay_steps,
-                                                           0.5,
-                                                           name='learning_rate')
+                self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+                with tf.control_dependencies(self.update_ops):
+                    self.global_step = tf.train.get_or_create_global_step()
+                    learning_rate = tf.train.exponential_decay(FLAGS.ilr, self.global_step, FLAGS.decay_steps,
+                                                               0.5,
+                                                               name='learning_rate')
 
-                self.dis_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                                  scope="{}/{}/{}".format(self.NAME, "Inference", "discriminator"))
-                self.gen_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                                  scope="{}/{}/{}".format(self.NAME, "Inference", "generator"))
+                    self.dis_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                                                      scope="{}/{}/{}".format(self.NAME, "Inference", "discriminator"))
+                    self.gen_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                                                      scope="{}/{}/{}".format(self.NAME, "Inference", "generator"))
 
-                self.real_dis_loss = tf.reduce_mean(
-                    tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(self.real_dis_logits),
-                                                            logits=self.real_dis_logits), name='real_dis_loss')
-                self.fake_dis_loss = tf.reduce_mean(
-                    tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(self.fake_dis_logits),
-                                                            logits=self.fake_dis_logits), name='fake_dis_loss')
-                self.dis_loss = self.real_dis_loss + self.fake_dis_loss
-                self.gen_loss = -self.fake_dis_loss
+                    self.real_dis_loss = tf.reduce_mean(
+                        tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(self.real_dis_logits),
+                                                                logits=self.real_dis_logits), name='real_dis_loss')
+                    self.fake_dis_loss = tf.reduce_mean(
+                        tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(self.fake_dis_logits),
+                                                                logits=self.fake_dis_logits), name='fake_dis_loss')
+                    self.dis_loss = self.real_dis_loss + self.fake_dis_loss
+                    self.gen_loss = -self.fake_dis_loss
 
-                gen_optimizer = tf.train.AdamOptimizer(learning_rate)
-                dis_optimizer = tf.train.AdamOptimizer(learning_rate)
-                self.dis_train_operation = dis_optimizer.minimize(self.dis_loss, var_list=self.dis_vars)
-                self.gen_train_operation = gen_optimizer.minimize(self.gen_loss, global_step=self.global_step,
-                                                                  var_list=self.gen_vars)
+                    gen_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
+                    dis_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
+                    self.dis_train_operation = dis_optimizer.minimize(self.dis_loss, var_list=self.dis_vars)
+                    self.gen_train_operation = gen_optimizer.minimize(self.gen_loss, global_step=self.global_step,
+                                                                      var_list=self.gen_vars)
+                    self.train_operation = [self.gen_train_operation] + [self.dis_train_operation for _ in
+                                                                         range(FLAGS.dis_steps)]
 
             self.init_node = tf.global_variables_initializer()
             self.save_node = tf.train.Saver()
@@ -252,21 +376,15 @@ class GAN(BaseModel):
         for epoch in range(FLAGS.epochs):
             while True:
                 try:
-                    _, summaries, step = self.ses.run(
-                        [self.gen_train_operation, self.merged_summaries, self.global_step])
-
                     for _ in range(FLAGS.dis_steps):
                         self.ses.run(self.dis_train_operation)
+
+                    _, summaries, step = self.ses.run(
+                        [self.gen_train_operation, self.merged_summaries, self.global_step])
 
                     if step % 10 == 0:
                         print(step)
                         self.summary_writer.add_summary(summaries, step)
-
-
-
-
-
-
                 except tf.errors.OutOfRangeError:
                     self.ses.run(self.dataloader.train_initializer)
                     break
@@ -283,15 +401,12 @@ class GAN(BaseModel):
 
 
 if __name__ == "__main__":
-    # model = CNN_Classifier("CNN_Test", summary=False, filters_list=[16, 32, 64, 128, 256],
-    #                        strides_list=[[2, 2], [2, 2], [1, 1], [1, 1], [1, 1]],
-    #                        kernel_size_list=[[5, 5], [3, 3], [3, 3], [3, 3], [2, 2]],
-    #                        padding_list=['v', 'v', 'v', 'v', 'v'])
     dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True)
     model = GAN(dataloader, "GAN", summary=True)
-    model.init_variables()
-    model.train()
-    model.ses.close()
+    print(model.update_ops)
+    # model.init_variables()
+    # model.train()
+    # model.ses.close()
 
     # model = CNN_Classifier("CNN_Test2", summary=False, filters_list=[16, 32, 64, 128, 256],
     #                        strides_list=[[2, 2], [2, 2], [1, 1], [1, 1], [1, 1]],
