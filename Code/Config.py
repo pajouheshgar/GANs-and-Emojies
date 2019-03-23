@@ -9,7 +9,10 @@ def warn(*args, **kwargs):
 warnings.warn = warn
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.simplefilter(action='ignore', category=FutureWarning)
-n_jobs = int(os.environ['NUMBER_OF_PROCESSORS']) - 1
+try:
+    n_jobs = int(os.environ['NUMBER_OF_PROCESSORS']) - 1
+except:
+    pass
 data_dir = "../../Dataset/"
 
 
