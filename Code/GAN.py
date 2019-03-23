@@ -129,7 +129,7 @@ class GAN():
 
         activation = tf.nn.relu
         with tf.variable_scope(name, reuse=reuse):
-            conv = tf.layers.conv2d_transpose(
+            conv = tf.layers.conv2d(
                 inputs=img,
                 kernel_size=kernel_size,
                 filters=nparams * 1,
@@ -144,7 +144,7 @@ class GAN():
                 name='bn1'
             ) if use_batch_norm else conv
 
-            conv = tf.layers.conv2d_transpose(
+            conv = tf.layers.conv2d(
                 inputs=net,
                 kernel_size=kernel_size,
                 filters=nparams * 2,
@@ -159,7 +159,7 @@ class GAN():
                 name='bn2'
             ) if use_batch_norm else conv
 
-            conv = tf.layers.conv2d_transpose(
+            conv = tf.layers.conv2d(
                 inputs=net,
                 kernel_size=kernel_size,
                 filters=nparams * 4,
@@ -174,7 +174,7 @@ class GAN():
                 name='bn3'
             ) if use_batch_norm else conv
 
-            conv = tf.layers.conv2d_transpose(
+            conv = tf.layers.conv2d(
                 inputs=net,
                 kernel_size=kernel_size,
                 filters=nparams * 8,
@@ -188,6 +188,8 @@ class GAN():
                 training=is_training,
                 name='bn4'
             ) if use_batch_norm else conv
+
+            print(net.shape)
 
             net = tf.layers.flatten(net, name='flatten')
             logits = tf.layers.dense(net, units=1, name='logits')
@@ -404,8 +406,8 @@ if __name__ == "__main__":
     dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True, categories_to_include=['Smileys & People'])
     model = GAN(dataloader, "GAN", summary=True)
     print(model.update_ops)
-    model.init_variables()
-    model.train()
+    # model.init_variables()
+    # model.train()
     # model.ses.close()
 
     # model = CNN_Classifier("CNN_Test2", summary=False, filters_list=[16, 32, 64, 128, 256],
