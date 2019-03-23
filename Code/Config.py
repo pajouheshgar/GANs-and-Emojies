@@ -1,4 +1,5 @@
 import os
+
 import warnings
 
 
@@ -12,7 +13,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 try:
     n_jobs = int(os.environ['NUMBER_OF_PROCESSORS']) - 1
 except:
-    pass
+    n_jobs = 4
 data_dir = "../../Dataset/"
 
 

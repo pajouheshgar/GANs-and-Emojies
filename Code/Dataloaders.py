@@ -10,11 +10,12 @@ from functools import reduce
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from Code.Word2Vec_Utils import load_word2vec
+from Code.Config import *
 
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer('n_cpu', os.environ['NUMBER_OF_PROCESSORS'], 'Number of CPU Cores')
+flags.DEFINE_integer('n_cpu', n_jobs, 'Number of CPU Cores')
 flags.DEFINE_string('dataset_dir', "../Dataset/", 'Directory of dataset')
 flags.DEFINE_string('word2vec_file', '../../Datasets/Word2Vec/GoogleNews-vectors-negative300.bin',
                     'Directory of word2vec binary file')
