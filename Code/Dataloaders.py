@@ -387,7 +387,6 @@ class Parallel_Conditional_GAN_Dataloader():
             labels = [directory for _ in images_in_directory]
             self.files_list += (list(zip(images_in_directory, labels)))
 
-
         with tf.name_scope("Dataloader"):
             train_dataset = self._create_dataset()
             train_iterator = train_dataset.make_initializable_iterator()
@@ -443,11 +442,13 @@ class Parallel_Conditional_GAN_Dataloader():
 
         emoji_image = emoji_image.astype(np.float32)
         company_id = self.company2id[label]
+
         if self.category_flag:
             category_id = self.category2id[self.img_name_2_info[image_file_name]['category']]
         else:
             category_id = 0
-
+        company_id = np.array(company_id, dtype=np.int32)
+        category_id = np.array(category_id, dtype=np.int32)
         if self.word2vec_flag:
             words_vector = 0
             words_list = get_words_list(self.img_name_2_info[image_file_name])

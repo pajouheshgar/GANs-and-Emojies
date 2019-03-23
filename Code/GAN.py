@@ -189,8 +189,6 @@ class GAN():
                 name='bn4'
             ) if use_batch_norm else conv
 
-            print(net.shape)
-
             net = tf.layers.flatten(net, name='flatten')
             logits = tf.layers.dense(net, units=1, name='logits')
             probs = tf.nn.sigmoid(logits, name='probs')
