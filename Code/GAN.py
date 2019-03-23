@@ -406,9 +406,9 @@ if __name__ == "__main__":
     dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True, categories_to_include=['Smileys & People'])
     model = GAN(dataloader, "GAN", summary=True)
     print(model.update_ops)
-    # model.init_variables()
-    # model.train()
-    # model.ses.close()
+    model.init_variables()
+    model.train()
+    model.ses.close()
 
     # model = CNN_Classifier("CNN_Test2", summary=False, filters_list=[16, 32, 64, 128, 256],
     #                        strides_list=[[2, 2], [2, 2], [1, 1], [1, 1], [1, 1]],
