@@ -7,8 +7,8 @@ from Code.ops import *
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('ilr', 0.001, 'initial_learning_rate')
-flags.DEFINE_integer('decay_steps', 10000, 'steps to halve the learning rate')
-flags.DEFINE_integer('epochs', 5000, 'Number of epochs to train.')
+flags.DEFINE_integer('decay_steps', 50000, 'steps to halve the learning rate')
+flags.DEFINE_integer('epochs', 20000, 'Number of epochs to train.')
 
 flags.DEFINE_float('z_std', 1.0, 'Standard deviation of Z')
 flags.DEFINE_float('beta1', 0.5, 'beta1 of Adam optimizer')
@@ -401,11 +401,11 @@ class GAN():
 
 
 if __name__ == "__main__":
-    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True)
+    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True, categories_to_include=['Smileys & People'])
     model = GAN(dataloader, "GAN", summary=True)
     print(model.update_ops)
-    # model.init_variables()
-    # model.train()
+    model.init_variables()
+    model.train()
     # model.ses.close()
 
     # model = CNN_Classifier("CNN_Test2", summary=False, filters_list=[16, 32, 64, 128, 256],
