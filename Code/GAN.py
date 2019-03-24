@@ -431,8 +431,8 @@ if __name__ == "__main__":
     print(model.discriminator_update_ops)
     model.init_variables()
     model.train()
-    model.ses.close()
     model.save()
+    model.ses.close()
 
     # model = CNN_Classifier("CNN_Test2", summary=False, filters_list=[16, 32, 64, 128, 256],
     #                        strides_list=[[2, 2], [2, 2], [1, 1], [1, 1], [1, 1]],
