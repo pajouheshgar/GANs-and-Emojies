@@ -7,8 +7,8 @@ from Code.ops import *
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('ilr', 0.001, 'initial_learning_rate')
-flags.DEFINE_integer('decay_steps', 50000, 'steps to halve the learning rate')
-flags.DEFINE_integer('epochs', 20000, 'Number of epochs to train.')
+flags.DEFINE_integer('decay_steps', 25000, 'steps to halve the learning rate')
+flags.DEFINE_integer('epochs', 3333, 'Number of epochs to train.')
 
 flags.DEFINE_float('z_std', 1.0, 'Standard deviation of Z')
 flags.DEFINE_float('beta1', 0.5, 'beta1 of Adam optimizer')
@@ -430,6 +430,7 @@ if __name__ == "__main__":
     model.init_variables()
     model.train()
     model.ses.close()
+    model.save()
 
     # model = CNN_Classifier("CNN_Test2", summary=False, filters_list=[16, 32, 64, 128, 256],
     #                        strides_list=[[2, 2], [2, 2], [1, 1], [1, 1], [1, 1]],
