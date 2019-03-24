@@ -284,7 +284,9 @@ class GAN():
                         tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(self.fake_dis_logits),
                                                                 logits=self.fake_dis_logits), name='fake_dis_loss')
                     self.dis_loss = self.real_dis_loss + self.fake_dis_loss
-                    self.gen_loss = -self.fake_dis_loss
+                    self.gen_loss = tf.reduce_mean(
+                        tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(self.fake_dis_logits),
+                                                                logits=self.fake_dis_logits), name='fake_dis_loss')
 
                     gen_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
                     dis_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
