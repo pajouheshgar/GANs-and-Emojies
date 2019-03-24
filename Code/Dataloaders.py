@@ -387,6 +387,8 @@ class Parallel_Conditional_GAN_Dataloader():
             labels = [directory for _ in images_in_directory]
             self.files_list += (list(zip(images_in_directory, labels)))
 
+        print(len(self.files_list))
+
         with tf.name_scope("Dataloader"):
             train_dataset = self._create_dataset()
             train_iterator = train_dataset.make_initializable_iterator()
@@ -560,19 +562,19 @@ class Parallel_Conditional_GAN_Dataloader():
 
 if __name__ == "__main__":
     # dataloader = Conditional_GAN_Dataloader(categories_to_include=None)
-    dataloader = Parallel_Conditional_GAN_Dataloader(categories_to_include=None, word2vec_flag=True)
-    x_train, y_train, z_train, w_train = dataloader.train_batch
+    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True)
+    # x_train, y_train, z_train, w_train = dataloader.train_batch
     # x_train, y_train, z_train = dataloader.train_batch
-    ses = tf.InteractiveSession()
-    ses.run(dataloader.train_initializer)
-    ses.run(dataloader.train_initializer)
-
-    a, b, c, w = ses.run([x_train, y_train, z_train, w_train])
-    a, b, c, w = ses.run([x_train, y_train, z_train, w_train])
-    i = 31
-    print(b, c)
-    print(w)
-    plt.imshow(a[i])
+    # ses = tf.InteractiveSession()
+    # ses.run(dataloader.train_initializer)
+    # ses.run(dataloader.train_initializer)
+    #
+    # a, b, c, w = ses.run([x_train, y_train, z_train, w_train])
+    # a, b, c, w = ses.run([x_train, y_train, z_train, w_train])
+    # i = 31
+    # print(b, c)
+    # print(w)
+    # plt.imshow(a[i])
     # plt.subplot(131)
     # plt.imshow(a[i][:, :, :3] * a[i][:, :, 3:])
     # plt.subplot(132)

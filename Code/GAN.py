@@ -407,6 +407,8 @@ class GAN:
                         summaries = self.ses.run(self.merged_summaries, feed_dict={self.is_training_placeholder: False})
                         print(step)
                         self.summary_writer.add_summary(summaries, step)
+                    if step % 1000 == 999:
+                        self.save()
                 except tf.errors.OutOfRangeError:
                     self.ses.run(self.dataloader.train_initializer)
                     break
