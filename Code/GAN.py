@@ -15,7 +15,8 @@ flags.DEFINE_float('beta1', 0.5, 'beta1 of Adam optimizer')
 flags.DEFINE_float('beta2', 0.99, 'beta2 of Adam optimizer')
 
 flags.DEFINE_integer('z_dim', 256, 'Dimension of z')
-flags.DEFINE_integer('n_params', 64, 'Number of parameters for Conv and Deconv layers')
+flags.DEFINE_integer('gen_n_params', 256, 'Number of parameters in generator')
+flags.DEFINE_integer('dis_n_params', 64, 'Number of parameters in discriminator')
 flags.DEFINE_integer('dis_steps', 1, 'Number of steps to train discriminator')
 flags.DEFINE_bool('use_batch_norm', True, 'Whether to use Batch Normalization or not')
 flags.DEFINE_integer('kernel_size', 5, 'Kernel size for Convolution and  Deconvolution layers')
@@ -25,7 +26,7 @@ flags.DEFINE_integer('image_summary_max', 5, 'Maximum images to show in tensorbo
 from Code.Dataloaders import Conditional_GAN_Dataloader, Parallel_Conditional_GAN_Dataloader
 
 
-class GAN():
+class GAN:
     NAME = "GAN"
     SAVE_DIR = "../Dataset/Models/"
     FILTERS_LIST = [16, 32, 64]
@@ -200,7 +201,8 @@ class GAN():
         np.random.seed(42)
         use_batch_norm = FLAGS.use_batch_norm
         kernel_size = [FLAGS.kernel_size, FLAGS.kernel_size]
-        n_params = FLAGS.n_params
+        gen_n_params = FLAGS.gen_n_params
+        dis_n_params = FLAGS.dis_n_params
         with tf.variable_scope(self.NAME):
             with tf.name_scope("Dataset"):
                 self.X_train, self.Y_train_company, self.Y_train_category, self.X_train_wordvector = self.dataloader.train_batch
@@ -235,7 +237,7 @@ class GAN():
                     reuse=False,
                     use_batch_norm=use_batch_norm,
                     kernel_size=kernel_size,
-                    nparams=n_params,
+                    nparams=gen_n_params,
                     is_training=self.is_training_placeholder,
                     name='generator',
                 )
@@ -249,7 +251,7 @@ class GAN():
                     img=self.generated_images_placeholder,
                     reuse=False,
                     use_batch_norm=use_batch_norm,
-                    nparams=n_params,
+                    nparams=dis_n_params,
                     kernel_size=kernel_size,
                     is_training=self.is_training_placeholder,
                     name="discriminator")
@@ -258,7 +260,7 @@ class GAN():
                     img=self.X_placeholder,
                     reuse=True,
                     use_batch_norm=use_batch_norm,
-                    nparams=n_params,
+                    nparams=dis_n_params,
                     kernel_size=kernel_size,
                     is_training=self.is_training_placeholder,
                     name="discriminator",
@@ -381,10 +383,11 @@ class GAN():
                     for _ in range(FLAGS.dis_steps):
                         self.ses.run(self.dis_train_operation)
 
-                    _, summaries, step = self.ses.run(
-                        [self.gen_train_operation, self.merged_summaries, self.global_step])
+                    _, step = self.ses.run(
+                        [self.gen_train_operation, self.global_step])
 
                     if step % 10 == 0:
+                        summaries = self.ses.run(self.merged_summaries, feed_dict={self.is_training_placeholder: False})
                         print(step)
                         self.summary_writer.add_summary(summaries, step)
                 except tf.errors.OutOfRangeError:
