@@ -71,7 +71,7 @@ class GAN:
                 filters=nparams * 4,
                 strides=[2, 2],
                 padding="SAME",
-                activation=activation,
+                # activation=activation,
                 name='dc1',
             )
             net = tf.layers.batch_normalization(
@@ -79,6 +79,7 @@ class GAN:
                 training=is_training,
                 name='bn1'
             ) if use_batch_norm else deconv
+            net = activation(net)
 
             deconv = tf.layers.conv2d_transpose(
                 inputs=net,
@@ -86,7 +87,7 @@ class GAN:
                 filters=nparams * 2,
                 strides=[2, 2],
                 padding="SAME",
-                activation=activation,
+                # activation=activation,
                 name='dc2',
             )
             net = tf.layers.batch_normalization(
@@ -94,6 +95,7 @@ class GAN:
                 training=is_training,
                 name='bn2'
             ) if use_batch_norm else deconv
+            net = activation(net)
 
             deconv = tf.layers.conv2d_transpose(
                 inputs=net,
@@ -101,7 +103,7 @@ class GAN:
                 filters=nparams * 1,
                 strides=[2, 2],
                 padding="SAME",
-                activation=activation,
+                # activation=activation,
                 name='dc3',
             )
             net = tf.layers.batch_normalization(
@@ -109,6 +111,7 @@ class GAN:
                 training=is_training,
                 name='bn3'
             ) if use_batch_norm else deconv
+            net = activation(net)
 
             deconv = tf.layers.conv2d_transpose(
                 inputs=net,
@@ -136,7 +139,7 @@ class GAN:
                 filters=nparams * 1,
                 strides=[2, 2],
                 padding="SAME",
-                activation=activation,
+                # activation=activation,
                 name='cn1',
             )
             net = tf.layers.batch_normalization(
@@ -144,6 +147,7 @@ class GAN:
                 training=is_training,
                 name='bn1'
             ) if use_batch_norm else conv
+            net = activation(net)
 
             conv = tf.layers.conv2d(
                 inputs=net,
@@ -151,7 +155,7 @@ class GAN:
                 filters=nparams * 2,
                 strides=[2, 2],
                 padding="SAME",
-                activation=activation,
+                # activation=activation,
                 name='cn2',
             )
             net = tf.layers.batch_normalization(
@@ -159,6 +163,7 @@ class GAN:
                 training=is_training,
                 name='bn2'
             ) if use_batch_norm else conv
+            net = activation(net)
 
             conv = tf.layers.conv2d(
                 inputs=net,
@@ -166,7 +171,7 @@ class GAN:
                 filters=nparams * 4,
                 strides=[2, 2],
                 padding="SAME",
-                activation=activation,
+                # activation=activation,
                 name='cn3',
             )
             net = tf.layers.batch_normalization(
@@ -174,6 +179,7 @@ class GAN:
                 training=is_training,
                 name='bn3'
             ) if use_batch_norm else conv
+            net = activation(net)
 
             conv = tf.layers.conv2d(
                 inputs=net,
@@ -181,7 +187,7 @@ class GAN:
                 filters=nparams * 8,
                 strides=[2, 2],
                 padding="SAME",
-                activation=activation,
+                # activation=activation,
                 name='cn4',
             )
             net = tf.layers.batch_normalization(
@@ -189,6 +195,7 @@ class GAN:
                 training=is_training,
                 name='bn4'
             ) if use_batch_norm else conv
+            net = activation(net)
 
             net = tf.layers.flatten(net, name='flatten')
             logits = tf.layers.dense(net, units=1, name='logits')
@@ -267,18 +274,25 @@ class GAN:
                 )
 
             with tf.name_scope("Optimization"):
+                self.generator_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS,
+                                                              scope=self.NAME + "/Inference/generator")
+                self.discriminator_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS,
+                                                                  scope=self.NAME + "/Inference/discriminator/")
                 self.update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-                with tf.control_dependencies(self.update_ops):
-                    self.global_step = tf.train.get_or_create_global_step()
-                    learning_rate = tf.train.exponential_decay(FLAGS.ilr, self.global_step, FLAGS.decay_steps,
-                                                               0.5,
-                                                               name='learning_rate')
 
-                    self.dis_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                                      scope="{}/{}/{}".format(self.NAME, "Inference", "discriminator"))
-                    self.gen_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                                      scope="{}/{}/{}".format(self.NAME, "Inference", "generator"))
+                self.global_step = tf.train.get_or_create_global_step()
+                learning_rate = tf.train.exponential_decay(FLAGS.ilr, self.global_step, FLAGS.decay_steps,
+                                                           0.5,
+                                                           name='learning_rate')
 
+                self.dis_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                                                  scope="{}/{}/{}".format(self.NAME, "Inference", "discriminator"))
+                self.gen_vars = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                                                  scope="{}/{}/{}".format(self.NAME, "Inference", "generator"))
+
+                # with tf.control_dependencies(self.update_ops):
+                with tf.control_dependencies(self.discriminator_update_ops):
+                    dis_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
                     self.real_dis_loss = tf.reduce_mean(
                         tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(self.real_dis_logits),
                                                                 logits=self.real_dis_logits), name='real_dis_loss')
@@ -286,17 +300,19 @@ class GAN:
                         tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(self.fake_dis_logits),
                                                                 logits=self.fake_dis_logits), name='fake_dis_loss')
                     self.dis_loss = self.real_dis_loss + self.fake_dis_loss
+                    self.dis_train_operation = dis_optimizer.minimize(self.dis_loss, var_list=self.dis_vars)
+
+                with tf.control_dependencies(self.generator_update_ops):
+                    gen_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
                     self.gen_loss = tf.reduce_mean(
                         tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(self.fake_dis_logits),
                                                                 logits=self.fake_dis_logits), name='fake_dis_loss')
-
-                    gen_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
-                    dis_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
-                    self.dis_train_operation = dis_optimizer.minimize(self.dis_loss, var_list=self.dis_vars)
                     self.gen_train_operation = gen_optimizer.minimize(self.gen_loss, global_step=self.global_step,
                                                                       var_list=self.gen_vars)
-                    self.train_operation = [self.gen_train_operation] + [self.dis_train_operation for _ in
-                                                                         range(FLAGS.dis_steps)]
+
+                print(self.dis_train_operation)
+                self.train_operation = [self.gen_train_operation] + [self.dis_train_operation for _ in
+                                                                     range(FLAGS.dis_steps)]
 
             self.init_node = tf.global_variables_initializer()
             self.save_node = tf.train.Saver()
@@ -380,11 +396,12 @@ class GAN:
         for epoch in range(FLAGS.epochs):
             while True:
                 try:
-                    for _ in range(FLAGS.dis_steps):
-                        self.ses.run(self.dis_train_operation)
-
-                    _, step = self.ses.run(
-                        [self.gen_train_operation, self.global_step])
+                    # for _ in range(FLAGS.dis_steps):
+                    #     self.ses.run(self.dis_train_operation)
+                    #
+                    # _, step = self.ses.run(
+                    #     [self.gen_train_operation, self.global_step])
+                    step, _ = self.ses.run([self.global_step, self.train_operation])
 
                     if step % 10 == 0:
                         summaries = self.ses.run(self.merged_summaries, feed_dict={self.is_training_placeholder: False})
@@ -408,7 +425,8 @@ class GAN:
 if __name__ == "__main__":
     dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True, categories_to_include=['Smileys & People'])
     model = GAN(dataloader, "GAN", summary=True)
-    print(model.update_ops)
+    print(model.generator_update_ops)
+    print(model.discriminator_update_ops)
     model.init_variables()
     model.train()
     model.ses.close()
