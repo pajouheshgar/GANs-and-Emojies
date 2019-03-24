@@ -17,7 +17,7 @@ flags.DEFINE_float('beta2', 0.99, 'beta2 of Adam optimizer')
 flags.DEFINE_integer('z_dim', 256, 'Dimension of z')
 flags.DEFINE_integer('n_params', 64, 'Number of parameters for Conv and Deconv layers')
 flags.DEFINE_integer('dis_steps', 1, 'Number of steps to train discriminator')
-flags.DEFINE_bool('use_batch_norm', False, 'Whether to use Batch Normalization or not')
+flags.DEFINE_bool('use_batch_norm', True, 'Whether to use Batch Normalization or not')
 flags.DEFINE_integer('kernel_size', 5, 'Kernel size for Convolution and  Deconvolution layers')
 
 flags.DEFINE_integer('image_summary_max', 5, 'Maximum images to show in tensorboard')
