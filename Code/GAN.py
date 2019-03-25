@@ -18,8 +18,8 @@ flags.DEFINE_integer('z_dim', 256, 'Dimension of z')
 flags.DEFINE_integer('gen_n_params', 256, 'Number of parameters in generator')
 flags.DEFINE_integer('dis_n_params', 64, 'Number of parameters in discriminator')
 flags.DEFINE_integer('dis_steps', 1, 'Number of steps to train discriminator')
-flags.DEFINE_bool('use_batch_norm', False, 'Whether to use Batch Normalization or not')
-flags.DEFINE_integer('kernel_size', 5, 'Kernel size for Convolution and  Deconvolution layers')
+flags.DEFINE_bool('use_batch_norm', True, 'Whether to use Batch Normalization or not')
+flags.DEFINE_integer('kernel_size', 3, 'Kernel size for Convolution and  Deconvolution layers')
 
 flags.DEFINE_integer('image_summary_max', 5, 'Maximum images to show in tensorboard')
 
