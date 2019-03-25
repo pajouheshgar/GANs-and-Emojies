@@ -7,8 +7,8 @@ from Code.ops import *
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('ilr', 0.001, 'initial_learning_rate')
-flags.DEFINE_integer('decay_steps', 25000, 'steps to halve the learning rate')
-flags.DEFINE_integer('epochs', 3333, 'Number of epochs to train.')
+flags.DEFINE_integer('decay_steps', 10000, 'steps to halve the learning rate')
+flags.DEFINE_integer('epochs', 500, 'Number of epochs to train.')
 
 flags.DEFINE_float('z_std', 1.0, 'Standard deviation of Z')
 flags.DEFINE_float('beta1', 0.5, 'beta1 of Adam optimizer')
@@ -18,7 +18,7 @@ flags.DEFINE_integer('z_dim', 256, 'Dimension of z')
 flags.DEFINE_integer('gen_n_params', 256, 'Number of parameters in generator')
 flags.DEFINE_integer('dis_n_params', 64, 'Number of parameters in discriminator')
 flags.DEFINE_integer('dis_steps', 1, 'Number of steps to train discriminator')
-flags.DEFINE_bool('use_batch_norm', True, 'Whether to use Batch Normalization or not')
+flags.DEFINE_bool('use_batch_norm', False, 'Whether to use Batch Normalization or not')
 flags.DEFINE_integer('kernel_size', 5, 'Kernel size for Convolution and  Deconvolution layers')
 
 flags.DEFINE_integer('image_summary_max', 5, 'Maximum images to show in tensorboard')
@@ -405,8 +405,10 @@ class GAN:
 
                     if step % 10 == 0:
                         summaries = self.ses.run(self.merged_summaries, feed_dict={self.is_training_placeholder: False})
-                        print(step)
                         self.summary_writer.add_summary(summaries, step)
+                    if step % 100 == 0:
+                        print(step)
+
                     if step % 1000 == 999:
                         self.save()
                 except tf.errors.OutOfRangeError:
