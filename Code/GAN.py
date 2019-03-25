@@ -21,7 +21,7 @@ flags.DEFINE_integer('dis_steps', 1, 'Number of steps to train discriminator')
 flags.DEFINE_bool('use_batch_norm', True, 'Whether to use Batch Normalization or not')
 flags.DEFINE_integer('kernel_size', 3, 'Kernel size for Convolution and  Deconvolution layers')
 
-flags.DEFINE_integer('image_summary_max', 5, 'Maximum images to show in tensorboard')
+flags.DEFINE_integer('image_summary_max', 6, 'Maximum images to show in tensorboard')
 
 from Code.Dataloaders import Conditional_GAN_Dataloader, Parallel_Conditional_GAN_Dataloader
 
@@ -65,6 +65,13 @@ class GAN:
         with tf.variable_scope(name, reuse=reuse):
             net = tf.layers.dense(z_img, units=nparams * 8 * s_h16 * s_w16, name="fc1")
             net = tf.reshape(net, shape=[-1, s_h16, s_w16, nparams * 8], name='reshape')
+            net = tf.layers.batch_normalization(
+                inputs=net,
+                training=is_training,
+                name='bn0'
+            ) if use_batch_norm else net
+            net = activation(net)
+
             deconv = tf.layers.conv2d_transpose(
                 inputs=net,
                 kernel_size=kernel_size,
