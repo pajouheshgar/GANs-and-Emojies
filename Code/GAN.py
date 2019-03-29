@@ -14,6 +14,7 @@ flags.DEFINE_float('z_std', 1.0, 'Standard deviation of Z')
 flags.DEFINE_float('beta1', 0.5, 'beta1 of Adam optimizer')
 flags.DEFINE_float('beta2', 0.99, 'beta2 of Adam optimizer')
 
+flags.DEFINE_float('alpha', 0.9, 'Positive labels probability')
 flags.DEFINE_integer('z_dim', 256, 'Dimension of z')
 flags.DEFINE_integer('gen_n_params', 256, 'Number of parameters in generator')
 flags.DEFINE_integer('dis_n_params', 64, 'Number of parameters in discriminator')
@@ -301,7 +302,7 @@ class GAN:
                 with tf.control_dependencies(self.discriminator_update_ops):
                     dis_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
                     self.real_dis_loss = tf.reduce_mean(
-                        tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(self.real_dis_logits),
+                        tf.nn.sigmoid_cross_entropy_with_logits(labels=FLAGS.alpha * tf.ones_like(self.real_dis_logits),
                                                                 logits=self.real_dis_logits), name='real_dis_loss')
                     self.fake_dis_loss = tf.reduce_mean(
                         tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.zeros_like(self.fake_dis_logits),
