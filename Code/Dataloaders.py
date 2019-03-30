@@ -439,7 +439,7 @@ class Parallel_Conditional_GAN_Dataloader():
 
         emoji_image = Image.open(FLAGS.dataset_dir + "emoji-images/{}/{}".format(label, image_file_name)).convert(
             "RGBA")
-        emoji_image.save("Test/{}_{}".format(label, image_file_name))
+        # emoji_image.save("Test/{}_{}".format(label, image_file_name))
         emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.BICUBIC)) / 255.0
         if FLAGS.image_channels == 3:
             emoji_image[:, :, :3] = emoji_image[:, :, :3] * emoji_image[:, :, 3:]
