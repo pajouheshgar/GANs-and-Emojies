@@ -443,7 +443,7 @@ class Parallel_Conditional_GAN_Dataloader():
         if self.word2vec_flag:
             words = get_words_list(self.img_name_2_info[image_file_name])
             words = " ".join(words)
-            emoji_image.save("Test/{}_{}_{}".format(label, words, image_file_name))
+            # emoji_image.save("Test/{}_{}_{}".format(label, words, image_file_name))
 
         emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.BICUBIC)) / 255.0
         if FLAGS.image_channels == 3:
