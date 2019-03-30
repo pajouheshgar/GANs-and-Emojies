@@ -490,6 +490,7 @@ class Parallel_Conditional_GAN_Dataloader():
         dataset = simple_dataset.map(self.wrapped_complex_map,
                                      num_parallel_calls=FLAGS.n_cpu)
         dataset = dataset.prefetch(buffer_size=FLAGS.prefetch_buffer_size)
+        dataset = dataset.shuffle(buffer_size=FLAGS.prefetch_buffer_size, seed=42)
 
         try:
             dataset = dataset.batch(FLAGS.batch_size, drop_remainder=True)

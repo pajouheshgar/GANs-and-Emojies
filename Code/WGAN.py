@@ -19,7 +19,7 @@ flags.DEFINE_float('alpha', 0.9, 'Positive labels probability')
 flags.DEFINE_integer('z_dim', 256, 'Dimension of z')
 flags.DEFINE_integer('gen_n_params', 256, 'Number of parameters in generator')
 flags.DEFINE_integer('dis_n_params', 64, 'Number of parameters in discriminator')
-flags.DEFINE_integer('dis_steps', 5, 'Number of steps to train discriminator')
+flags.DEFINE_integer('dis_steps', 3, 'Number of steps to train discriminator')
 flags.DEFINE_bool('use_batch_norm', False, 'Whether to use Batch Normalization or not')
 flags.DEFINE_integer('kernel_size', 3, 'Kernel size for Convolution and  Deconvolution layers')
 
@@ -415,7 +415,7 @@ class WGAN:
         for epoch in range(FLAGS.epochs):
             while True:
                 try:
-                    dis_steps = 25 if step < 25 else FLAGS.dis_steps
+                    dis_steps = 5 if step < 25 else FLAGS.dis_steps
                     for _ in range(dis_steps):
                         self.ses.run(self.dis_train_operation)
                         self.ses.run(self.clip_discriminator_var_op)
