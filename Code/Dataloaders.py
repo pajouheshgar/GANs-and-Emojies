@@ -568,13 +568,15 @@ class Parallel_Conditional_GAN_Dataloader():
 
 if __name__ == "__main__":
     # dataloader = Conditional_GAN_Dataloader(categories_to_include=None)
-    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=False, categories_to_include=['Flags'])
+    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True,
+                                                     categories_to_include=['Smileys & People ! Demon'])
     ses = tf.Session()
     ses.run(dataloader.train_initializer)
     while True:
         try:
-            x_train, y_train, z_train, w_train = dataloader.train_batch
-            a, b, c, w = ses.run([x_train, y_train, z_train, w_train])
+            # x_train, y_train, z_train, w_train = dataloader.train_batch
+            x_train, y_train, z_train = dataloader.train_batch
+            ses.run(x_train)
         except:
             break
 
