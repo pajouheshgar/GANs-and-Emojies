@@ -311,13 +311,12 @@ class WGAN:
 
                     # self.dis_loss = self.real_dis_loss + self.fake_dis_loss
 
-                    self.dis_loss = tf.reduce_mean(self.real_dis_logits - self.fake_dis_logits,
+                    self.dis_loss = tf.reduce_mean(-self.real_dis_logits + self.fake_dis_logits,
                                                    name='dis_loss')
 
                     self.dis_train_operation = dis_optimizer.minimize(self.dis_loss, var_list=self.dis_vars)
 
-                self.clip_discriminator_var_op = [var.assign(tf.clip_by_value(var, -FLAGS.clip, FLAGS.clip))
-                                                  for
+                self.clip_discriminator_var_op = [var.assign(tf.clip_by_value(var, -FLAGS.clip, FLAGS.clip)) for
                                                   var in self.dis_vars]
 
                 with tf.control_dependencies(self.generator_update_ops):
@@ -326,7 +325,7 @@ class WGAN:
                     # self.gen_loss = tf.reduce_mean(
                     #     tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(self.fake_dis_logits),
                     #                                             logits=self.fake_dis_logits), name='gen_loss')
-                    self.gen_loss = tf.reduce_mean(self.fake_dis_logits, name='gen_loss')
+                    self.gen_loss = tf.reduce_mean(-self.fake_dis_logits, name='gen_loss')
 
                     self.gen_train_operation = gen_optimizer.minimize(self.gen_loss, global_step=self.global_step,
                                                                       var_list=self.gen_vars)
