@@ -434,6 +434,7 @@ class Parallel_Conditional_GAN_Dataloader():
 
         emoji_image = Image.open(FLAGS.dataset_dir + "emoji-images/{}/{}".format(label, image_file_name)).convert(
             "RGBA")
+        # emoji_image.save("Test/{}_{}".format(label, image_file_name))
         emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.BICUBIC)) / 255.0
         if FLAGS.image_channels == 3:
             emoji_image[:, :, :3] = emoji_image[:, :, :3] * emoji_image[:, :, 3:]
@@ -562,8 +563,17 @@ class Parallel_Conditional_GAN_Dataloader():
 
 if __name__ == "__main__":
     # dataloader = Conditional_GAN_Dataloader(categories_to_include=None)
-    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True)
-    # x_train, y_train, z_train, w_train = dataloader.train_batch
+    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True, categories_to_include=['Flags'])
+    ses = tf.Session()
+    ses.run(dataloader.train_initializer)
+    while True:
+        try:
+            x_train, y_train, z_train, w_train = dataloader.train_batch
+            a, b, c, w = ses.run([x_train, y_train, z_train, w_train])
+        except:
+            break
+
+    ses.close()
     # x_train, y_train, z_train = dataloader.train_batch
     # ses = tf.InteractiveSession()
     # ses.run(dataloader.train_initializer)
