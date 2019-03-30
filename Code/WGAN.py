@@ -322,6 +322,7 @@ class WGAN:
 
                 with tf.control_dependencies(self.generator_update_ops):
                     gen_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
+
                     # self.gen_loss = tf.reduce_mean(
                     #     tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(self.fake_dis_logits),
                     #                                             logits=self.fake_dis_logits), name='gen_loss')
@@ -424,9 +425,10 @@ class WGAN:
                     #     [self.gen_train_operation, self.global_step])
                     step, _ = self.ses.run([self.global_step, self.gen_train_operation])
 
-                    if step % 50 == 0:
+                    if step % 5 == 0:
                         summaries = self.ses.run(self.merged_summaries, feed_dict={self.is_training_placeholder: False})
                         self.summary_writer.add_summary(summaries, step)
+                    print(step)
                     if step % 100 == 0:
                         print(step)
 
