@@ -7,7 +7,7 @@ from Code.ops import *
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_float('ilr', 0.001, 'initial_learning_rate')
-flags.DEFINE_integer('decay_steps', 2000, 'steps to halve the learning rate')
+flags.DEFINE_integer('decay_steps', 1500, 'steps to halve the learning rate')
 flags.DEFINE_integer('epochs', 8000, 'Number of epochs to train.')
 
 flags.DEFINE_float('z_std', 1.0, 'Standard deviation of Z')
