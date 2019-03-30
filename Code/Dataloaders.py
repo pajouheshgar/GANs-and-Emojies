@@ -338,7 +338,12 @@ class Parallel_Conditional_GAN_Dataloader():
                   'Objects', 'Animals & Nature', 'Flags']
 
     COMPANIES_TO_INCLUDE = ['apple', 'facebook', 'google', 'twitter', 'messenger']
-    CATEGORIES_TO_INCLUDE = ['Smileys & People']
+    CATEGORIES_TO_INCLUDE = ['Smileys & People ! Smileys']
+    SMILEYS_PEOPLE = ['Smileys & People ! Objects', 'Smileys & People ! People', 'Smileys & People ! Activities',
+                      'Smileys & People ! BodyParts', 'Smileys & People ! Hands', 'Smileys & People ! Demon',
+                      'Smileys & People ! Heart', 'Smileys & People ! Other', 'Smileys & People ! Smileys',
+                      'Smileys & People ! SmileysCat',
+                      ]
 
     def __init__(self, companies_to_include=COMPANIES_TO_INCLUDE, categories_to_include=CATEGORIES_TO_INCLUDE,
                  word2vec_flag=False):
@@ -357,7 +362,7 @@ class Parallel_Conditional_GAN_Dataloader():
             self.id2category = {i: c for i, c in enumerate(self.categories_to_include)}
         self.files_list = []
 
-        with open(FLAGS.dataset_dir + "emoji_pretty.json") as f:
+        with open(FLAGS.dataset_dir + "emoji_pretty_selected.json") as f:
             self.additional_data = json.load(f)
         self.img_name_2_info = {d['image']: d for d in self.additional_data}
 
@@ -386,7 +391,7 @@ class Parallel_Conditional_GAN_Dataloader():
                        os.listdir(FLAGS.dataset_dir + "emoji-images/" + directory + "/")))
             labels = [directory for _ in images_in_directory]
             self.files_list += (list(zip(images_in_directory, labels)))
-
+        shuffle(self.files_list)
         print(len(self.files_list))
 
         with tf.name_scope("Dataloader"):
@@ -434,7 +439,7 @@ class Parallel_Conditional_GAN_Dataloader():
 
         emoji_image = Image.open(FLAGS.dataset_dir + "emoji-images/{}/{}".format(label, image_file_name)).convert(
             "RGBA")
-        # emoji_image.save("Test/{}_{}".format(label, image_file_name))
+        emoji_image.save("Test/{}_{}".format(label, image_file_name))
         emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.BICUBIC)) / 255.0
         if FLAGS.image_channels == 3:
             emoji_image[:, :, :3] = emoji_image[:, :, :3] * emoji_image[:, :, 3:]
@@ -563,7 +568,7 @@ class Parallel_Conditional_GAN_Dataloader():
 
 if __name__ == "__main__":
     # dataloader = Conditional_GAN_Dataloader(categories_to_include=None)
-    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True, categories_to_include=['Flags'])
+    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=False, categories_to_include=['Flags'])
     ses = tf.Session()
     ses.run(dataloader.train_initializer)
     while True:

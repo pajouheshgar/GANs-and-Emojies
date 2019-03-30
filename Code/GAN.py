@@ -314,7 +314,7 @@ class GAN:
                     gen_optimizer = tf.train.AdamOptimizer(learning_rate, beta1=FLAGS.beta1, beta2=FLAGS.beta2)
                     self.gen_loss = tf.reduce_mean(
                         tf.nn.sigmoid_cross_entropy_with_logits(labels=tf.ones_like(self.fake_dis_logits),
-                                                                logits=self.fake_dis_logits), name='fake_dis_loss')
+                                                                logits=self.fake_dis_logits), name='gen_loss')
                     self.gen_train_operation = gen_optimizer.minimize(self.gen_loss, global_step=self.global_step,
                                                                       var_list=self.gen_vars)
 
