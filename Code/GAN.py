@@ -318,7 +318,6 @@ class GAN:
                     self.gen_train_operation = gen_optimizer.minimize(self.gen_loss, global_step=self.global_step,
                                                                       var_list=self.gen_vars)
 
-                print(self.dis_train_operation)
                 self.train_operation = [self.gen_train_operation] + [self.dis_train_operation for _ in
                                                                      range(FLAGS.dis_steps)]
 
@@ -436,7 +435,8 @@ class GAN:
 
 if __name__ == "__main__":
     tf.set_random_seed(42)
-    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True, categories_to_include=['Smileys & People ! Smileys'])
+    dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True,
+                                                     categories_to_include=['Smileys & People ! Smileys'])
     # dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True, categories_to_include=['Flags'])
     model = GAN(dataloader, "GAN", summary=True)
     print(model.generator_update_ops)

@@ -15,6 +15,8 @@ from Code.Config import *
 flags = tf.app.flags
 FLAGS = flags.FLAGS
 
+flags.DEFINE_string('f', '', 'kernel')
+
 flags.DEFINE_integer('n_cpu', n_jobs, 'Number of CPU Cores')
 flags.DEFINE_string('dataset_dir', "../Dataset/", 'Directory of dataset')
 flags.DEFINE_string('word2vec_file', '../../Datasets/Word2Vec/GoogleNews-vectors-negative300.bin',
@@ -436,10 +438,13 @@ class Parallel_Conditional_GAN_Dataloader():
     def _complex_map(self, image_file_name, label):
         image_file_name = image_file_name.decode()
         label = label.decode()
-
         emoji_image = Image.open(FLAGS.dataset_dir + "emoji-images/{}/{}".format(label, image_file_name)).convert(
             "RGBA")
-        # emoji_image.save("Test/{}_{}".format(label, image_file_name))
+        if self.word2vec_flag:
+            words = get_words_list(self.img_name_2_info[image_file_name])
+            words = " ".join(words)
+            emoji_image.save("Test/{}_{}_{}".format(label, words, image_file_name))
+
         emoji_image = np.array(emoji_image.resize([FLAGS.image_height, FLAGS.image_width], Image.BICUBIC)) / 255.0
         if FLAGS.image_channels == 3:
             emoji_image[:, :, :3] = emoji_image[:, :, :3] * emoji_image[:, :, 3:]
@@ -491,6 +496,16 @@ class Parallel_Conditional_GAN_Dataloader():
         except:
             dataset = dataset.apply(tf.contrib.data.batch_and_drop_remainder(FLAGS.batch_size))
         return dataset
+
+    def get_words_vector(self, words):
+        words = words.split()
+        words_vector = 0
+
+        for w in words:
+            wv = self.word_embedding[w]
+            words_vector += wv
+        words_vector /= len(words)
+        return words_vector
 
 
 # if __name__ == "__main__":
@@ -569,13 +584,13 @@ class Parallel_Conditional_GAN_Dataloader():
 if __name__ == "__main__":
     # dataloader = Conditional_GAN_Dataloader(categories_to_include=None)
     dataloader = Parallel_Conditional_GAN_Dataloader(word2vec_flag=True,
-                                                     categories_to_include=['Smileys & People ! Demon'])
+                                                     categories_to_include=['Smileys & People ! Smileys'])
     ses = tf.Session()
     ses.run(dataloader.train_initializer)
     while True:
         try:
-            # x_train, y_train, z_train, w_train = dataloader.train_batch
-            x_train, y_train, z_train = dataloader.train_batch
+            x_train, y_train, z_train, w_train = dataloader.train_batch
+            # x_train, y_train, z_train = dataloader.train_batch
             ses.run(x_train)
         except:
             break
