@@ -5,4 +5,4 @@ Dataset : Facebook, Apple, Google, Messenger, Twitter emoji images
 
 ## Generated Samples 
 
-![](https://pasteboard.co/IHLhP2m.jpg)
+![Sample1](https://pasteboard.co/IHLhP2m.jpg)
